@@ -1,64 +1,75 @@
 # Apple Watch ECG Analyzer
 
-Extract and analyze Apple Watch ECG PDF exports. Two-stage pipeline: **PDF waveform extraction** → **QRS detection & premature beat screening**.
+> **Claude Code Skill** — 同时可作为独立 Python CLI 工具使用。/
+> **Claude Code Skill** — also usable as a standalone Python CLI tool.
 
-> **Not a medical device.** This tool is for informational and research purposes only. Always consult a licensed physician for diagnosis and treatment decisions.
+从 Apple Watch 心电图 PDF 中提取波形数据，检测 QRS 波群，计算心率与 RR 间期，筛查早搏（APC/PVC）。/
+Extract and analyze Apple Watch ECG PDF exports: waveform extraction, QRS detection, heart rate / RR interval analysis, and premature beat (APC/PVC) screening.
 
-## Features
+> ⚠️ **非医疗设备。** 本工具仅供信息参考与研究用途，不能替代执业医师的诊断与治疗方案。/
+> **Not a medical device.** For informational and research purposes only. Always consult a licensed physician for diagnosis and treatment decisions.
 
-- **PDF Waveform Extraction** — Parse Apple Watch ECG PDFs and extract raw time/voltage data (512 Hz, Lead I)
-- **QRS Detection** — Pure Python implementation of Pan-Tompkins-style algorithm (no numpy/scipy)
-- **Heart Rate & RR Intervals** — Compute mean HR, RR statistics, basic HRV (SDNN equivalent)
-- **Premature Beat Screening** — Detect and classify APC/PVC candidates with confidence grading
-- **Quality Assessment** — Data completeness check, row offset detection, artifact flagging guidance
-- **Multiple Output Formats** — JSON (structured) or CSV (raw waveform)
+---
 
-## Installation
+## 功能 / Features
+
+- **PDF 波形提取** — 解析 Apple Watch ECG PDF，提取原始时间/电压数据（512 Hz，Lead I）
+- **QRS 检测** — 纯 Python 实现 Pan-Tompkins 风格算法（无 numpy/scipy 依赖）
+- **心率与 RR 间期** — 计算平均心率、RR 统计、基础 HRV（SDNN 等效）
+- **早搏筛查** — 检测并分类 APC/PVC 候选，带置信度分级
+- **质量评估** — 数据完整性检查、Row 0 偏移检测、伪迹标记指引
+- **多格式输出** — JSON（结构化）或 CSV（原始波形）
+
+---
+
+## 安装 / Installation
 
 ```bash
 pip install pdfplumber
 ```
 
-Or:
+或：
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Requires Python 3.8+.
+需要 Python 3.8+。
 
-## Usage
+---
 
-### Step 1: Extract waveform from PDF
+## 使用 / Usage
+
+### 步骤 1：从 PDF 提取波形
 
 ```bash
 python3 scripts/ecg_extract.py <input.pdf> -o output.json --pretty
 python3 scripts/ecg_extract.py <input.pdf> --csv -o waveform.csv
 ```
 
-**Output JSON structure:**
-- `metadata` — patient name, DOB, record time, HR, rhythm, device info
-- `waveform.time_voltage` — array of `{t, v, row}` (time in seconds, voltage in mV)
-- `quality` — data completeness, Row 0 offset info
+**输出 JSON 结构：**
+- `metadata` — 患者姓名、出生日期、记录时间、心率、心律、设备信息
+- `waveform.time_voltage` — `{t, v, row}` 数组（时间秒、电压 mV、行号 0/1/2）
+- `quality` — 数据完整性、Row 0 偏移信息
 
-**Key notes:**
-- Apple Watch PDFs use a 3-row layout (10 seconds each)
-- Row 0 has a ~0.36s offset due to the ECG icon
-- Each row baseline is computed independently to avoid cross-row jumps
+**关键说明：**
+- Apple Watch PDF 采用 3 行布局（每行 10 秒）
+- Row 0 因 ECG 图标占用有约 0.36 秒偏移
+- 每行基线独立计算（中位数），避免跨行跳变
 
-### Step 2: QRS detection & analysis
+### 步骤 2：QRS 检测与分析
 
 ```bash
 python3 scripts/ecg_qrs_detect.py output.json --pretty -o analysis.json
 ```
 
-**Output JSON structure:**
-- `peaks` — detected R-peaks with time, voltage, index
-- `rr_intervals` — consecutive RR intervals in ms
-- `summary` — total beats, mean HR, RR statistics
-- `summary.potential_ectopic` — premature beat candidates with confidence & classification
+**输出 JSON 结构：**
+- `peaks` — 检测到的 R 波峰（时间、电压、索引）
+- `rr_intervals` — 连续 RR 间期（毫秒）
+- `summary` — 总心搏数、平均心率、RR 统计
+- `summary.potential_ectopic` — 早搏候选（含置信度与分类）
 
-**Example summary output:**
+**示例输出：**
 ```
 Beats: 42, HR: 84.0 bpm
 RR: 714.3ms (std: 45.2ms)
@@ -67,58 +78,77 @@ Potential ectopic: 2
   t=18.56s, RR=420ms (59%) [APC, medium]
 ```
 
-## Algorithm Overview
+---
 
-See [`references/analysis_guide.md`](references/analysis_guide.md) for detailed documentation.
+## 算法概览 / Algorithm Overview
 
-**High-level pipeline:**
+详见 [`references/analysis_guide.md`](references/analysis_guide.md)。
 
-1. **Bandpass filter** — 0.5 Hz highpass (remove baseline drift) + 40 Hz lowpass (remove noise)
-2. **Differentiation + squaring + integration** — 150ms moving window to create energy envelope
-3. **Adaptive threshold peak detection** — Dynamic threshold based on signal/noise levels, 200ms refractory period
-4. **Back-search for R-peak** — Map energy peak to true maximum voltage point in filtered signal
-5. **RR analysis & ectopic screening** — Coupling interval < 80% of median RR flags premature beat
+**流水线：**
 
-**Sensitivity adjustment:** Edit the threshold coefficient in `ecg_qrs_detect.py` line:
+1. **带通滤波** — 0.5 Hz 高通（去除基线漂移）+ 40 Hz 低通（去除噪声）
+2. **差分 + 平方 + 积分** — 150 ms 移动窗口生成能量包络
+3. **自适应阈值峰值检测** — 基于信号/噪声水平的动态阈值，200 ms 不应期
+4. **回搜 R 波峰** — 将能量峰值映射到滤波信号的真实最大电压点
+5. **RR 分析与早搏筛查** — 联律间期 < 中位 RR 的 80% 即标记为早搏
+
+**灵敏度调节：** 编辑 `scripts/ecg_qrs_detect.py` 中：
 ```python
 threshold1 = noise_level + 0.25 * (signal_level - noise_level)
 ```
-Increase (e.g., 0.35) for stricter detection, decrease (e.g., 0.15) for more sensitive.
+增大系数（如 0.35）更严格，减小（如 0.15）更灵敏。
 
-## AI Agent Compatibility
+---
 
-These scripts are standalone Python CLI tools. They can be invoked by any AI agent or coding assistant:
+## 伪迹验证 / Artifact Verification
 
-| Agent | Usage |
-|-------|-------|
-| **Claude Code** | Direct script execution via Bash tool |
-| **Codex** | Direct script execution via Bash tool |
-| **OpenClaw** | Native Skill support (wraps scripts with `SKILL.md`) |
+当算法标记 PVC 或极短 RR（< 300 ms）时，对照原始 PDF 验证：
 
-The scripts read local PDF/JSON files and write local output — no network calls, no API keys, no external dependencies beyond `pdfplumber`.
+- 正常 R 波峰：0.3–0.8 mV。> 1.5 mV 提示伪迹
+- 正常 QRS：尖锐、窄（< 120 ms）。宽弧或平台 → 伪迹
+- 单个怪异心搏夹在正常心搏间 → 更可能是伪迹而非病理
+- 详见 `references/analysis_guide.md` 完整验证协议
 
-## Limitations
+---
 
-- **Single-lead only** — Apple Watch Lead I; cannot distinguish all morphologies
-- **No P-wave detection** — APC vs PVC classification is probabilistic based on timing only
-- **30-second snapshot** — Captures episodic events but may miss intermittent patterns
-- **Chinese PDFs only** — Metadata parsing targets Apple Watch ECG PDFs in Chinese locale
-- **Threshold-based** — Struggles with very low-amplitude QRS or significant motion artifact
+## 限制 / Limitations
 
-## Artifact Verification
+- **单导联** — Apple Watch Lead I，无法区分所有形态
+- **无 P 波检测** — APC vs PVC 分类仅基于时序，是概率性的
+- **30 秒快照** — 捕捉偶发事件但可能漏掉间歇性模式
+- **仅中文 PDF** — 元数据解析针对中文区域 Apple Watch ECG PDF
+- **阈值依赖** — 极低振幅 QRS 或显著运动伪迹时效果下降
 
-When the algorithm flags a PVC or very short RR (< 300 ms), verify against the original PDF:
+---
 
-- Normal R-peaks: 0.3–0.8 mV. Values > 1.5 mV suggest artifact.
-- Normal QRS: sharp, narrow (< 120 ms). Wide arcs or plateaus → artifact.
-- Single bizarre beat among normal beats → more likely artifact than pathology.
-- See `docs/analysis_guide.md` for full verification protocol.
+## AI Agent 兼容 / AI Agent Compatibility
 
-## License
+本工具同时是 **Claude Code Skill** 和通用 Python CLI 脚本：
 
-MIT License — see [LICENSE](LICENSE).
+| Agent | 使用方式 |
+|---|---|
+| **Claude Code** | 作为 Skill 安装到 `~/.claude/skills/`，Claude 自动识别并调用；或直接执行脚本 |
+| **Codex** | 直接通过 Bash 工具执行脚本 |
+| **OpenClaw** | 原生 Skill 支持（通过 `SKILL.md` 包装脚本） |
 
-## Acknowledgments
+脚本仅读写本地文件，无网络调用、无 API Key、除 `pdfplumber` 外无外部依赖。
 
-- Pan & Tompkins, 1985 — original real-time QRS detection algorithm
+### 作为 Claude Code Skill 安装
+
+```bash
+git clone https://github.com/TZPlus/apple-watch-ecg-analyzer.git \
+  ~/.claude/skills/apple-watch-ecg-analyzer
+```
+
+Claude Code 会在对话中自动识别 Apple Watch ECG PDF 相关请求并调用本 Skill。
+
+---
+
+## 协议 / License
+
+MIT License — 详见 [LICENSE](LICENSE).
+
+## 致谢 / Acknowledgments
+
+- Pan & Tompkins, 1985 — 原始实时 QRS 检测算法
 - Apple Watch ECG: 512 Hz, Lead I, 10 mm/mV, 25 mm/s
