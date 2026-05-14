@@ -32,8 +32,8 @@ Requires Python 3.8+.
 ### Step 1: Extract waveform from PDF
 
 ```bash
-python3 ecg_extract.py <input.pdf> -o output.json --pretty
-python3 ecg_extract.py <input.pdf> --csv -o waveform.csv
+python3 scripts/ecg_extract.py <input.pdf> -o output.json --pretty
+python3 scripts/ecg_extract.py <input.pdf> --csv -o waveform.csv
 ```
 
 **Output JSON structure:**
@@ -49,7 +49,7 @@ python3 ecg_extract.py <input.pdf> --csv -o waveform.csv
 ### Step 2: QRS detection & analysis
 
 ```bash
-python3 ecg_qrs_detect.py output.json --pretty -o analysis.json
+python3 scripts/ecg_qrs_detect.py output.json --pretty -o analysis.json
 ```
 
 **Output JSON structure:**
@@ -69,7 +69,7 @@ Potential ectopic: 2
 
 ## Algorithm Overview
 
-See [`docs/analysis_guide.md`](docs/analysis_guide.md) for detailed documentation.
+See [`references/analysis_guide.md`](references/analysis_guide.md) for detailed documentation.
 
 **High-level pipeline:**
 

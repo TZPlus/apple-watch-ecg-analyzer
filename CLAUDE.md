@@ -9,16 +9,17 @@ Pure Python，无 numpy/scipy 依赖。仅需 pdfplumber 解析 PDF。
 ## 验证命令
 
 ```bash
-python3 ecg_extract.py example.pdf --pretty
-python3 ecg_qrs_detect.py example.json --pretty
+python3 scripts/ecg_extract.py example.pdf --pretty
+python3 scripts/ecg_qrs_detect.py example.json --pretty
 ```
 
 ## 目录结构
 
 ```
-├── ecg_extract.py      # PDF 波形提取
-├── ecg_qrs_detect.py   # QRS 检测与早搏筛查
-├── docs/               # 算法文档
+├── scripts/
+│   ├── ecg_extract.py      # PDF 波形提取
+│   └── ecg_qrs_detect.py   # QRS 检测与早搏筛查
+├── references/             # 算法文档
 └── requirements.txt
 ```
 
