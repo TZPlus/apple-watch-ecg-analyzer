@@ -130,6 +130,7 @@ threshold1 = noise_level + 0.25 * (signal_level - noise_level)
 | **Claude Code** | 作为 Skill 安装到 `~/.claude/skills/`，Claude 自动识别并调用；或直接执行脚本 |
 | **Codex** | 直接通过 Bash 工具执行脚本 |
 | **OpenClaw** | 原生 Skill 支持（通过 `SKILL.md` 包装脚本） |
+| **Hermes Agent** | 兼容 agentskills.io 标准，安装到 `~/.hermes/skills/` 后通过 `/apple-watch-ecg-analyzer` 调用；或直接执行脚本 |
 
 脚本仅读写本地文件，无网络调用、无 API Key、除 `pdfplumber` 外无外部依赖。
 
